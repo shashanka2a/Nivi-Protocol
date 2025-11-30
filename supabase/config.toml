@@ -1,0 +1,23 @@
+# Supabase Configuration
+# This file is used by Supabase CLI for local development
+# For production, use the connection string from Supabase Dashboard
+
+[project]
+# Your Supabase project reference
+project_id = "xnzruzquuvovtucbqdrw"
+
+[db]
+# Database connection settings
+# These will be auto-detected or set from your .env DATABASE_URL
+host = ""
+port = 5432
+database = "postgres"
+user = "postgres"
+password = "xfoH4B7jNt7TQOw5"
+
+[api]
+# Supabase API settings
+url = "https://xnzruzquuvovtucbqdrw.supabase.co"
+anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuenJ1enF1dXZvdnR1Y2JxZHJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NzQ2MzQsImV4cCI6MjA4MDA1MDYzNH0.U0rnFERC1S6Rd-a7QD51fcge9NrU7w6xsCPAIy2KKm8"
+service_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuenJ1enF1dXZvdnR1Y2JxZHJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NzQ2MzQsImV4cCI6MjA4MDA1MDYzNH0.U0rnFERC1S6Rd-a7QD51fcge9NrU7w6xsCPAIy2KKm8"
+

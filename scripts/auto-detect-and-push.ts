@@ -1,0 +1,320 @@
+#!/usr/bin/env tsx
+/**
+ * Auto-detect Supabase database connection with SSL testing
+ * Updates config.toml and pushes schema once connection is found
+ */
+
+import { PrismaClient } from '@prisma/client';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+import { writeFileSync, readFileSync } from 'fs';
+import { execSync } from 'child_process';
+
+dotenv.config({ path: join(process.cwd(), '.env') });
+
+const password = 'xfoH4B7jNt7TQOw5';
+const projectRef = 'xnzruzquuvovtucbqdrw';
+
+interface ConnectionTest {
+  name: string;
+  connectionString: string;
+  ssl: boolean;
+}
+
+// Generate connection strings to test
+function generateConnectionStrings(): ConnectionTest[] {
+  const tests: ConnectionTest[] = [];
+  const regions = [
+    'us-east-1', 'us-west-1', 'us-west-2',
+    'eu-west-1', 'eu-west-2', 'eu-central-1',
+    'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1',
+  ];
+
+  // Format 1: Direct connection with project ref in username
+  regions.forEach(region => {
+    tests.push({
+      name: `Direct ${region} (5432, SSL)`,
+      connectionString: `postgresql://postgres.${projectRef}:${password}@aws-0-${region}.pooler.supabase.com:5432/postgres?sslmode=require`,
+      ssl: true,
+    });
+    tests.push({
+      name: `Direct ${region} (5432, no SSL)`,
+      connectionString: `postgresql://postgres.${projectRef}:${password}@aws-0-${region}.pooler.supabase.com:5432/postgres?sslmode=disable`,
+      ssl: false,
+    });
+  });
+
+  // Format 2: Pooler connection
+  regions.forEach(region => {
+    tests.push({
+      name: `Pooler ${region} (6543, SSL)`,
+      connectionString: `postgresql://postgres.${projectRef}:${password}@aws-0-${region}.pooler.supabase.com:6543/postgres?sslmode=require`,
+      ssl: true,
+    });
+    tests.push({
+      name: `Pooler ${region} (6543, no SSL)`,
+      connectionString: `postgresql://postgres.${projectRef}:${password}@aws-0-${region}.pooler.supabase.com:6543/postgres?sslmode=disable`,
+      ssl: false,
+    });
+  });
+
+  // Format 3: Simple db. format
+  tests.push({
+    name: 'Simple db format (5432, SSL)',
+    connectionString: `postgresql://postgres:${password}@db.${projectRef}.supabase.co:5432/postgres?sslmode=require`,
+    ssl: true,
+  });
+  tests.push({
+    name: 'Simple db format (5432, no SSL)',
+    connectionString: `postgresql://postgres:${password}@db.${projectRef}.supabase.co:5432/postgres?sslmode=disable`,
+    ssl: false,
+  });
+
+  // Format 4: With project ref in username, db. format
+  tests.push({
+    name: 'db format with project ref (5432, SSL)',
+    connectionString: `postgresql://postgres.${projectRef}:${password}@db.${projectRef}.supabase.co:5432/postgres?sslmode=require`,
+    ssl: true,
+  });
+  tests.push({
+    name: 'db format with project ref (5432, no SSL)',
+    connectionString: `postgresql://postgres.${projectRef}:${password}@db.${projectRef}.supabase.co:5432/postgres?sslmode=disable`,
+    ssl: false,
+  });
+
+  return tests;
+}
+
+async function testConnection(connString: string, timeout = 5000): Promise<{ success: boolean; error?: string }> {
+  try {
+    const prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: connString,
+        },
+      },
+      log: [],
+    });
+
+    // Test with timeout
+    const connectPromise = prisma.$connect();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), timeout)
+    );
+
+    await Promise.race([connectPromise, timeoutPromise]);
+    await prisma.$queryRaw`SELECT version()`;
+    await prisma.$disconnect();
+    return { success: true };
+  } catch (error: any) {
+    const errorMsg = error.message || String(error);
+    
+    // If we get authentication/tenant errors, we reached the server but credentials are wrong
+    if (errorMsg.includes('FATAL') || errorMsg.includes('Tenant') || errorMsg.includes('authentication')) {
+      return { success: false, error: 'Reached server but authentication failed' };
+    }
+    
+    // If we can't reach, it's a network/host issue
+    if (errorMsg.includes("Can't reach") || errorMsg.includes('Timeout')) {
+      return { success: false, error: 'Cannot reach server' };
+    }
+    
+    return { success: false, error: errorMsg.substring(0, 100) };
+  }
+}
+
+function parseConnectionString(connString: string): {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: boolean;
+} {
+  const url = new URL(connString.replace('postgresql://', 'http://'));
+  const sslMode = url.searchParams.get('sslmode') || 'prefer';
+  
+  return {
+    host: url.hostname,
+    port: parseInt(url.port) || 5432,
+    database: url.pathname.replace('/', '') || 'postgres',
+    user: url.username,
+    password: url.password,
+    ssl: sslMode === 'require' || sslMode === 'prefer',
+  };
+}
+
+function updateConfigToml(connInfo: ReturnType<typeof parseConnectionString>) {
+  const configPath = join(process.cwd(), 'supabase', 'config.toml');
+  
+  const configContent = `# Supabase Configuration
+# Auto-generated by auto-detect-and-push script
+
+[project]
+project_id = "${projectRef}"
+
+[db]
+host = "${connInfo.host}"
+port = ${connInfo.port}
+database = "${connInfo.database}"
+user = "${connInfo.user}"
+password = "${connInfo.password}"
+
+[db.pooler]
+enabled = ${connInfo.port === 6543}
+port = ${connInfo.port === 6543 ? 6543 : 5432}
+
+[api]
+url = "https://${projectRef}.supabase.co"
+anon_key = "${process.env.SUPABASE_KEY || ''}"
+service_key = "${process.env.SUPABASE_KEY || ''}"
+
+[studio]
+enabled = true
+port = 54323
+`;
+
+  writeFileSync(configPath, configContent);
+  console.log('✅ Updated supabase/config.toml');
+}
+
+function updateEnvFile(connString: string) {
+  const envPath = join(process.cwd(), '.env');
+  let envContent = readFileSync(envPath, 'utf-8');
+  
+  // Remove sslmode from connection string for .env (Prisma handles it)
+  const cleanConnString = connString.split('?')[0];
+  
+  if (envContent.includes('DATABASE_URL=')) {
+    envContent = envContent.replace(
+      /DATABASE_URL=.*/,
+      `DATABASE_URL="${cleanConnString}"`
+    );
+  } else {
+    envContent += `\nDATABASE_URL="${cleanConnString}"\n`;
+  }
+  
+  writeFileSync(envPath, envContent);
+  console.log('✅ Updated .env file');
+}
+
+async function pushSchema() {
+  console.log('\n📤 Pushing schema to database...\n');
+  
+  try {
+    execSync('npx prisma generate', {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
+
+    execSync('npx prisma db push --accept-data-loss', {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+      },
+    });
+
+    console.log('\n✅ Schema successfully pushed to Supabase!');
+    return true;
+  } catch (error) {
+    console.error('\n❌ Error pushing schema:', error);
+    return false;
+  }
+}
+
+async function main() {
+  console.log('🔍 Auto-detecting Supabase database connection...\n');
+  console.log('Project Ref:', projectRef);
+  console.log('Testing SSL on/off, different hosts, and ports...\n');
+
+  const tests = generateConnectionStrings();
+  console.log(`Testing ${tests.length} connection configurations...\n`);
+
+  let workingConnection: ConnectionTest | null = null;
+
+  // Track which connections reached the server (even if auth failed)
+  const reachedServer: ConnectionTest[] = [];
+
+  for (const test of tests) {
+    const display = test.connectionString.replace(/:[^:@]+@/, ':****@');
+    process.stdout.write(`Testing: ${test.name.padEnd(40)} ... `);
+
+    const result = await testConnection(test.connectionString, 3000);
+
+    if (result.success) {
+      console.log('✅ SUCCESS!\n');
+      workingConnection = test;
+      break;
+    } else {
+      if (result.error?.includes('authentication') || result.error?.includes('Reached server')) {
+        console.log('⚠️  (reached server, auth issue)');
+        reachedServer.push(test);
+      } else {
+        console.log('❌');
+      }
+    }
+  }
+
+  // If no connection worked but some reached the server, show those
+  if (!workingConnection && reachedServer.length > 0) {
+    console.log('\n⚠️  Found connections that reached the server but authentication failed:');
+    reachedServer.slice(0, 3).forEach(test => {
+      console.log(`   - ${test.name}: ${test.connectionString.replace(/:[^:@]+@/, ':****@')}`);
+    });
+    console.log('\n💡 This suggests the host/port is correct but username/password format may be wrong.');
+  }
+
+  if (!workingConnection) {
+    console.log('\n❌ Could not find working connection string');
+    console.log('\n📝 Please get the exact connection string from:');
+    console.log('   https://supabase.com/dashboard/project/xnzruzquuvovtucbqdrw/settings/database');
+    console.log('\nThen update your .env file manually.\n');
+    process.exit(1);
+  }
+
+  console.log('='.repeat(60));
+  console.log('✅ Found working connection!');
+  console.log('='.repeat(60));
+  console.log('Configuration:', workingConnection.name);
+  console.log('Connection:', workingConnection.connectionString.replace(/:[^:@]+@/, ':****@'));
+  console.log('SSL:', workingConnection.ssl ? 'Enabled' : 'Disabled');
+  console.log('');
+
+  // Parse connection info
+  const connInfo = parseConnectionString(workingConnection.connectionString);
+  console.log('📋 Connection Details:');
+  console.log('   Host:', connInfo.host);
+  console.log('   Port:', connInfo.port);
+  console.log('   Database:', connInfo.database);
+  console.log('   User:', connInfo.user);
+  console.log('   SSL:', connInfo.ssl);
+  console.log('');
+
+  // Update files
+  console.log('📝 Updating configuration files...');
+  updateConfigToml(connInfo);
+  updateEnvFile(workingConnection.connectionString);
+  console.log('');
+
+  // Push schema
+  const success = await pushSchema();
+
+  if (success) {
+    console.log('\n🎉 Setup complete!');
+    console.log('\n📊 Next steps:');
+    console.log('   - View database: npm run db:studio');
+    console.log('   - Check tables in Supabase dashboard');
+    console.log('');
+  } else {
+    console.log('\n⚠️  Connection found but schema push failed');
+    console.log('   Check the error messages above');
+    process.exit(1);
+  }
+}
+
+main().catch((error) => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
+

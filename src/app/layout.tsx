@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Manrope } from "next/font/google";
 import "../styles/globals.css";
+import { AptosWalletProvider } from "@/lib/aptos/wallet";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -49,7 +50,9 @@ export default function RootLayout({
           fontFamily: `var(--font-manrope), -apple-system, BlinkMacSystemFont, sans-serif`,
         }}
       >
-        {children}
+        <AptosWalletProvider>
+          {children}
+        </AptosWalletProvider>
       </body>
     </html>
   );
