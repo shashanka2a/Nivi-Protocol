@@ -10,6 +10,10 @@ export function AptosWalletProvider({ children }: { children: ReactNode }) {
       autoConnect={false}
       onError={(error) => {
         console.error('Aptos wallet error:', error);
+        // Show user-friendly error message for blank popup issues
+        if (error?.message?.includes('popup') || error?.message?.includes('blank')) {
+          console.warn('Wallet popup issue detected. Ensure Petra wallet extension is installed and enabled.');
+        }
       }}
     >
       {children}

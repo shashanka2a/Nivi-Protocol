@@ -11,25 +11,38 @@ export function WalletConnectButton() {
   const [showWalletList, setShowWalletList] = useState(false);
 
   const handleConnect = async (walletName?: string) => {
+    if (!walletName) {
+      console.error("Wallet name is required");
+      return;
+    }
+
     setIsConnecting(true);
+    setShowWalletList(false);
+    
     try {
-      if (walletName) {
-        // Connect to specific wallet
-        const wallet = wallets.find((w) => w.name === walletName);
-        if (wallet) {
-          await connect(walletName);
-        }
-      } else {
-        // Connect to first available wallet
-        if (wallets.length > 0) {
-          await connect(wallets[0].name);
-        }
+      // Find the wallet
+      const wallet = wallets.find((w) => w.name === walletName);
+      
+      if (!wallet) {
+        throw new Error(`Wallet ${walletName} not found`);
       }
+
+      // Check if wallet is installed
+      if (wallet.readyState !== "Installed") {
+        // Open wallet installation page
+        if (wallet.url) {
+          window.open(wallet.url, "_blank");
+        }
+        throw new Error(`Please install ${walletName} wallet first`);
+      }
+
+      // Connect to the wallet
+      await connect(walletName);
     } catch (error) {
       console.error("Connection error:", error);
+      alert(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsConnecting(false);
-      setShowWalletList(false);
     }
   };
 
