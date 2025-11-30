@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description: "Decentralized protocol for content verification, minting, and rental",
   keywords: ["blockchain", "content", "verification", "NFT", "rental"],
   authors: [{ name: "Nivi Protocol" }],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: {
     title: "Nivi Protocol",
     description: "Decentralized protocol for content verification, minting, and rental",
