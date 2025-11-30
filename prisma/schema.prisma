@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - supports both Creators and Brands
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  walletAddress String?   @unique
+  name          String?
+  avatar        String?
+  type          UserType  @default(CREATOR)
+  verified      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  createdVideos    Video[]
+  activeLicenses   License[] @relation("LicenseSubscriber")
+  ownedLicenses    License[] @relation("LicenseOwner")
+  earnings         Transaction[]
+  withdrawals      Withdrawal[]
+  sessions         Session[]
+
+  @@index([walletAddress])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserType {
+  CREATOR
+  BRAND
+}
+
+// Video/Content model
+model Video {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  thumbnail   String
+  videoUrl    String?  // IPFS or CDN URL
+  category    String
+  price       Float    // Monthly license fee in APT
+  verified    Boolean  @default(false)
+  shelbyScore Float?   // AI verification score (0-100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  creatorId String
+  creator   User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  licenses  License[]
+  stats     VideoStats?
+
+  @@index([creatorId])
+  @@index([category])
+  @@index([verified])
+  @@map("videos")
+}
+
+// Video statistics
+model VideoStats {
+  id        String  @id @default(cuid())
+  videoId   String  @unique
+  video     Video   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  views     Int     @default(0)
+  licenses  Int     @default(0)
+  rating    Float   @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("video_stats")
+}
+
+// License/Subscription model
+model License {
+  id          String        @id @default(cuid())
+  videoId     String
+  video       Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  subscriberId String
+  subscriber  User          @relation("LicenseSubscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  ownerId     String
+  owner       User          @relation("LicenseOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  status      LicenseStatus @default(ACTIVE)
+  monthlyFee  Float
+  platformFee Float         // 5% of monthlyFee
+  startDate   DateTime      @default(now())
+  endDate     DateTime?
+  nextBilling DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  transactions Transaction[]
+
+  @@index([subscriberId])
+  @@index([ownerId])
+  @@index([videoId])
+  @@index([status])
+  @@map("licenses")
+}
+
+enum LicenseStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+}
+
+// Transaction model for payments
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseId   String?
+  license     License?        @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  type        TransactionType
+  amount      Float           // In APT
+  platformFee Float           @default(0)
+  aptosTxHash String?         @unique
+  status      TransactionStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([licenseId])
+  @@index([status])
+  @@index([aptosTxHash])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  SUBSCRIPTION
+  WITHDRAWAL
+  MINT_FEE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Withdrawal model
+model Withdrawal {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  aptosTxHash String?           @unique
+  status      WithdrawalStatus  @default(PENDING)
+  requestedAt DateTime          @default(now())
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("withdrawals")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Session model for authentication
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  walletAddress String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
