@@ -13,7 +13,7 @@ type VerificationState = "idle" | "scanning" | "verified" | "error";
 export function CreatorStudio({ onBack }: { onBack: () => void }) {
   const [verificationState, setVerificationState] =
     useState<VerificationState>("idle");
-  const [licenseFee, setLicenseFee] = useState("10");
+  const [licenseFee, setLicenseFee] = useState("2.5");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const [isMinting, setIsMinting] = useState(false);
@@ -21,7 +21,7 @@ export function CreatorStudio({ onBack }: { onBack: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { account, signAndSubmitTransaction, connected } = useWallet();
-  const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+  const aptosConfig = new AptosConfig({ network: Network.DEVNET });
   const aptos = new Aptos(aptosConfig);
 
   // Helper to convert address to string
@@ -95,13 +95,13 @@ export function CreatorStudio({ onBack }: { onBack: () => void }) {
       const monthlyFeeOctas = Math.floor(parseFloat(licenseFee) * 100_000_000);
 
       // Construct transaction payload for mint_license
-      // Note: Replace with your actual module address after deployment
-      const moduleAddress = AccountAddress.fromString(accountAddress);
+      // Deployed contract address
+      const moduleAddress = AccountAddress.fromString("0xc6391b805ccbfe053003d9f3cbcbd5e6b839dc4d2b41b98336c1bbbde91421df");
       
       // Build transaction payload (wallet adapter format)
       const transactionPayload = {
         data: {
-          function: `${moduleAddress.toString()}::nivi::mint_license`,
+          function: `${moduleAddress.toString()}::license_token::mint_license`,
           typeArguments: [],
           functionArguments: [
             Array.from(lineageIdBytes),
@@ -395,7 +395,7 @@ export function CreatorStudio({ onBack }: { onBack: () => void }) {
                   </span>
                 </div>
                 <p className="text-white/40 mt-2">
-                  Suggested: 5-20 APT based on content quality
+                      Suggested: 1-5 APT based on content quality
                 </p>
               </div>
 

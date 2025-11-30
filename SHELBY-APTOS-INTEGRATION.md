@@ -105,9 +105,9 @@ const result = await verify(file);
    ```
 
 ### Network Configuration:
-Currently set to `Network.TESTNET`. Change in `CreatorStudio.tsx`:
+Currently set to `Network.DEVNET`. Configured in `CreatorStudio.tsx`:
 ```typescript
-const aptosConfig = new AptosConfig({ network: Network.MAINNET });
+const aptosConfig = new AptosConfig({ network: Network.DEVNET });
 ```
 
 ## 🚀 Next Steps

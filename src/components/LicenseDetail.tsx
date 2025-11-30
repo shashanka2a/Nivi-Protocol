@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { Video } from "../data/mockVideos";
 import { WalletConnectButton } from "./WalletConnectButton";
 import { useWallet } from "@/lib/aptos/wallet";
+import { Aptos, AptosConfig, Network, AccountAddress } from "@aptos-labs/ts-sdk";
 
 export function LicenseDetail({
   video,
@@ -28,20 +29,55 @@ export function LicenseDetail({
 }) {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const { connected } = useWallet();
+  const { connected, account, signAndSubmitTransaction } = useWallet();
+  const aptosConfig = new AptosConfig({ network: Network.DEVNET });
+  const aptos = new Aptos(aptosConfig);
 
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleSubscribe = () => {
-    if (!connected) {
+  const handleSubscribe = async () => {
+    if (!connected || !account) {
       alert("Please connect your wallet to subscribe to this license.");
       return;
     }
+
     setIsSubscribing(true);
-    setTimeout(() => {
+
+    try {
+      // Get account address
+      const accountAddress = typeof account.address === 'string' 
+        ? account.address 
+        : account.address.toString();
+
+      // Calculate total price in octas (1 APT = 100,000,000 octas)
+      const totalPriceOctas = Math.floor(totalPrice * 100_000_000);
+
+      // For demo: Send to creator's address (in production, this would be the contract address)
+      // Using a placeholder creator address - in production, use video.creator.walletAddress
+      const creatorAddress = AccountAddress.fromString("0xc6391b805ccbfe053003d9f3cbcbd5e6b839dc4d2b41b98336c1bbbde91421df");
+
+      // Build transaction payload to transfer APT coins
+      const transactionPayload = {
+        data: {
+          function: "0x1::coin::transfer",
+          typeArguments: ["0x1::aptos_coin::AptosCoin"],
+          functionArguments: [
+            creatorAddress.toString(),
+            totalPriceOctas.toString(),
+          ],
+        },
+      } as any;
+
+      // Sign and submit transaction using wallet
+      const response = await signAndSubmitTransaction(transactionPayload);
+      
+      // Wait for transaction to complete
+      await aptos.waitForTransaction({ transactionHash: response.hash });
+
+      // Show success
       setIsSubscribing(false);
       setShowConfetti(true);
       
@@ -84,7 +120,14 @@ export function LicenseDetail({
       }
 
       setTimeout(() => setShowConfetti(false), 3000);
-    }, 2000);
+
+      // Show success message with transaction hash
+      alert(`✅ Subscription successful!\n\nTransaction: ${response.hash}\nView on Explorer: https://explorer.aptoslabs.com/txn/${response.hash}?network=devnet`);
+    } catch (error) {
+      console.error("Subscription failed:", error);
+      setIsSubscribing(false);
+      alert(`❌ Subscription failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const platformFee = video.price * 0.05;

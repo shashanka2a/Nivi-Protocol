@@ -30,7 +30,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1659933357788-9e5fbcd1e130",
       verified: true,
     },
-    price: 15,
+    price: 2.5,
     verified: true,
     category: "Dance",
     rights: [
@@ -55,7 +55,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
       verified: true,
     },
-    price: 20,
+    price: 3.0,
     verified: true,
     category: "Food",
     rights: [
@@ -80,7 +80,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
       verified: true,
     },
-    price: 25,
+    price: 4.5,
     verified: true,
     category: "Tech",
     rights: [
@@ -105,7 +105,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2",
       verified: true,
     },
-    price: 12,
+    price: 1.8,
     verified: true,
     category: "Lifestyle",
     rights: [
@@ -130,7 +130,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
       verified: true,
     },
-    price: 18,
+    price: 2.2,
     verified: true,
     category: "Lifestyle",
     rights: [
@@ -155,7 +155,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
       verified: true,
     },
-    price: 30,
+    price: 4.8,
     verified: true,
     category: "Lifestyle",
     rights: [
@@ -180,7 +180,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
       verified: true,
     },
-    price: 10,
+    price: 1.5,
     verified: true,
     category: "Comedy",
     rights: [
@@ -205,7 +205,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
       verified: true,
     },
-    price: 14,
+    price: 2.0,
     verified: true,
     category: "Food",
     rights: [
@@ -230,7 +230,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
       verified: true,
     },
-    price: 35,
+    price: 4.2,
     verified: true,
     category: "Tech",
     rights: [
@@ -255,7 +255,7 @@ export const MOCK_VIDEOS: Video[] = [
       avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f",
       verified: true,
     },
-    price: 22,
+    price: 3.5,
     verified: true,
     category: "Dance",
     rights: [

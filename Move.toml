@@ -1,0 +1,13 @@
+[package]
+name = "nivi_protocol"
+version = "1.0.0"
+
+[addresses]
+nivi_addr = "0xc6391b805ccbfe053003d9f3cbcbd5e6b839dc4d2b41b98336c1bbbde91421df"
+std = "0x1"
+aptos_framework = "0x1"
+aptos_stdlib = "0x1"
+move_stdlib = "0x1"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", rev = "devnet", subdir = "aptos-framework" }
