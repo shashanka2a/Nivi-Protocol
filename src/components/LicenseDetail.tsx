@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
   Play,
@@ -29,14 +29,23 @@ export function LicenseDetail({
 }) {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { connected, account, signAndSubmitTransaction } = useWallet();
   const aptosConfig = new AptosConfig({ network: Network.DEVNET });
   const aptos = new Aptos(aptosConfig);
 
-  // Scroll to top when component mounts
+  // Scroll to top and simulate loading when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    setIsLoading(true);
+    
+    // Simulate content loading with subtle animation
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [video]);
 
   const handleSubscribe = async () => {
     if (!connected || !account) {
@@ -134,9 +143,20 @@ export function LicenseDetail({
   const totalPrice = video.price + platformFee;
 
   return (
-    <div className="min-h-screen pb-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="min-h-screen pb-8"
+    >
       {/* Header */}
-      <div className="sticky top-0 z-50 glass-card border-b border-white/10 px-6 py-4">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="sticky top-0 z-50 glass-card border-b border-white/10 px-6 py-4"
+      >
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
@@ -163,15 +183,46 @@ export function LicenseDetail({
             </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Video Preview */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="glass-card overflow-hidden mb-6"
-        >
+        {/* Loading skeleton */}
+        <AnimatePresence>
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-6"
+            >
+              {[1, 2, 3, 4].map((i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: [0.5, 0.8, 0.5] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    delay: i * 0.15,
+                  }}
+                  className="glass-card h-48 rounded-xl"
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Content */}
+        <AnimatePresence>
+          {!isLoading && (
+            <>
+              {/* Video Preview */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="glass-card overflow-hidden mb-6"
+              >
           <div className="relative aspect-video bg-black">
             <ImageWithFallback
               src={video.thumbnail}
@@ -423,7 +474,10 @@ export function LicenseDetail({
             <p className="text-white/70 leading-snug">Cancel Anytime</p>
           </div>
         </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

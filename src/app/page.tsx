@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { SplashScreen } from "@/components/SplashScreen";
 import { OnboardingLogin } from "@/components/OnboardingLogin";
 import { CreatorStudio } from "@/components/CreatorStudio";
@@ -26,6 +26,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("home");
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   // Handle splash screen completion
   const handleSplashComplete = () => {
@@ -58,10 +59,16 @@ export default function Home() {
     }
   };
 
-  // Handle video click
+  // Handle video click with loading animation
   const handleVideoClick = (video: Video) => {
+    setIsLoadingDetail(true);
     setSelectedVideo(video);
-    setCurrentScreen("license-detail");
+    
+    // Small delay for smooth transition
+    setTimeout(() => {
+      setCurrentScreen("license-detail");
+      setIsLoadingDetail(false);
+    }, 150);
   };
 
   // Handle back navigation
@@ -78,6 +85,32 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative">
+      {/* Loading overlay for license detail */}
+      <AnimatePresence>
+        {isLoadingDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="glass-card p-8 rounded-2xl text-center"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"
+              />
+              <p className="text-white/80">Loading license details...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {currentScreen === "splash" && (
           <SplashScreen key="splash" onComplete={handleSplashComplete} />
