@@ -15,10 +15,6 @@
     --success-green: #10B981;
   }
 
-  * {
-    @apply border-border;
-  }
-
   body {
     @apply bg-[#050505] text-white;
     background-image: 
